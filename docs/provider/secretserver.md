@@ -1,21 +1,75 @@
+
 # Delinea Secret Server
 
 External Secrets Operator integration with [Delinea Secret Server](https://docs.delinea.com/online-help/secret-server/start.htm).
 
-### Creating a SecretStore
+### Basic Requirements
 
-You need a username, password and a fully qualified Secret Server tenant URL to authenticate
-i.e. `https://yourTenantName.secretservercloud.com`.
+- You are required to supply a username, password and a fully qualified
+   Secret Server tenant URL to authenticate i.e.
+   `https://yourTenantName.secretservercloud.com`.
 
-Both username and password can be specified either directly in your `SecretStore` yaml config, or by referencing a kubernetes secret.
+ - You must properly Configure Secret Server for communication with ESO.
 
-To acquire a username and password, refer to the  Secret Server [user management](https://docs.delinea.com/online-help/secret-server/users/creating-users/index.htm) documentation.
+ - You must create and properly configure a secret that is accessable by
+   the account provided above.
 
-Both `username` and `password` can either be specified directly via the `value` field (example below)
->spec.provider.secretserver.username.value: "yourusername"<br />
-spec.provider.secretserver.password.value: "yourpassword" <br />
+### Configuring Secret Server
+The Secret Server ESO provider module implements the Secret Server [Golang SDK](https://github.com/DelineaXPM/tss-sdk-go).<br />
+`Note: You will need administrator privileges to configure Secret Server.`
 
-Or you can reference a kubernetes secret (password example below).
+Please refer to the Secret Server [SDK setup guide](https://docs.delinea.com/online-help/secret-server/api-scripting/sdk-devops/using-sdk/index.htm#SetupProcedure) documentation
+for details on how to successfully configure Secret Server to work with ESO.
+
+ - To learn more about Secret Server, refer to the  Secret Server [end user guide](https://docs.delinea.com/online-help/secret-server/guides-tutorials/end-user-guide/index.htm) documentation.
+
+### Creating your secret
+Note: ESO will be looking for a specific field in your secret named "Data".
+
+ ***Create a secret template***
+
+ - Navigate to Settings->Secrets->"Secret Templates"
+
+ - Click "Create / Import Template"
+
+ - Enter a name and click save
+
+ - In the following template information screen click "Fields" then click "Add Field"
+
+ - Enter "Data" in the name field, and select "Text" as the "Data Type"
+
+ - Save the template
+
+ ***Create a secret***
+
+ - Create a new secret using the template you created above<br />*(the secret name field should not contain spaces or control characters)*
+
+ - Add the JSON data you wish to work with in the "Data" field
+
+ - Save the secret
+
+ - Note the secret ID in the URL
+
+### Configuring the ESO Secret Store
+
+Both username and password can be specified directly in your `SecretStore` yaml config, or by referencing a kubernetes secret.<br />
+
+ - Both `username` and `password` can either be specified directly via the `value` field (example below)
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: secret-server-store
+spec:
+  provider:
+    secretserver:
+      serverURL: "https://yourtenantname.secretservercloud.com"
+      username:
+        value: "yourusername"
+      password:
+        value: "yourpassword"
+```
+ - Or you can reference a kubernetes secret (password example below).
 
 ```yaml
 apiVersion: external-secrets.io/v1beta1
@@ -37,13 +91,13 @@ spec:
 ### Referencing Secrets
 
 Secrets may be referenced by secret ID or secret name.
->Please note if using the secret name
+>If using the secret name as your remoteRef.key
 the name field must not contain spaces or control characters.<br />
 If multiple secrets are found, *`only the first found secret will be returned`*.
 
 Please note: `Retrieving a specific version of a secret is not yet supported.`
 
-Note that because all Secret Server secrets are JSON objects, you must specify the `remoteRef.property`
+All Secret Server secrets are JSON objects, therefore you must specify the `remoteRef.property`
 in your ExternalSecret configuration.<br />
 You can access nested values or arrays using [gjson syntax](https://github.com/tidwall/gjson/blob/master/SYNTAX.md).
 
@@ -64,9 +118,9 @@ spec:
           property: "array.0.value" #<GJSON_PROPERTY> * an empty property will return the entire secret
 ```
 
-### Preparing your secret
+### Accessing your secret
 You can either retrieve your entire secret or you can use a JSON formatted string
-stored in your secret located at Items[0].ItemValue to retrieve a specific value.<br />
+stored in your secret "Data" field located at Items[0].ItemValue to retrieve a specific value.<br />
 See example JSON secret below.
 
 ### Examples
